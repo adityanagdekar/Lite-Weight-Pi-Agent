@@ -34,7 +34,7 @@ The project runs on an **Ubuntu DigitalOcean Droplet**, which keeps the agent av
 
 **Telegram** serves as the user interface, eliminating the need to build a separate frontend application.
 
-Incoming Telegram messages are handled by **pi-gateway**, which maps conversations to persistent **Pi** sessions using **SQLite**.
+Incoming Telegram messages are handled by the open-source [`pi-gateway`](https://github.com/alejandro-ao/pi-gateway) project created by [alejandro-ao](https://github.com/alejandro-ao), which I extended for this project.
 
 Pi acts as the agent runtime and sends requests to the following Gemma model through OpenRouter:
 
