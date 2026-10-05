@@ -1,0 +1,28 @@
+# Optional gateway identifier (unique per user, not a Pi session name):
+instanceName: research
+databasePath: ~/.local/share/pi-gateway/pi-gateway.sqlite3
+logLevel: INFO
+
+telegram:
+  # Prefer env var in production:
+  botToken: env:TELEGRAM_BOT_TOKEN
+  allowedUserIds:
+    - 123456789
+  allowGroups: false
+  includeUserInGroupSessionKey: false
+
+pi:
+  command: pi
+  # All Pi sessions will be created/resumed from this directory.
+  cwd: ~/pi-workspace
+  # Optional. Leave unset to use Pi's default ~/.pi/agent/sessions.
+  # sessionDir: ~/.pi/agent/sessions
+  # Optional Pi startup defaults (also set with init/configure flags):
+  # defaultProvider: anthropic
+  # defaultModel: claude-sonnet-4-5
+  # defaultThinking: medium
+  idleTtlSeconds: 1800
+  # Maximum bytes for one stdout/stderr RPC frame from Pi. Can also be set
+  # with PI_GATEWAY_RPC_STREAM_LIMIT.
+  rpcStreamLimit: 16777216
+  extraArgs: []

@@ -1,0 +1,169 @@
+# Telegram Gateway
+
+`pi_gateway/telegram_bot.py` contains the Telegram adapter and command router. It uses `python-telegram-bot`.
+
+## Responsibilities
+
+`TelegramGateway` is responsible for:
+
+- Starting Telegram polling.
+- Registering Telegram slash commands.
+- Authorizing Telegram users.
+- Mapping Telegram updates to gateway conversations.
+- Routing gateway commands.
+- Sending normal text to Pi.
+- Sending lifecycle notifications on startup/shutdown.
+
+## Startup
+
+```text
+TelegramGateway.start()
+  ↓
+Application.initialize()
+  ↓
+bot.set_my_commands(...)
+  ↓
+Application.start()
+  ↓
+updater.start_polling(...)
+```
+
+The gateway currently uses Telegram polling, not webhooks. This is simpler for VPS and personal use because it does not require a public HTTPS endpoint.
+
+## Authorization
+
+Authorization happens before commands or normal messages are processed.
+
+```python
+if self.telegram.allowed_user_ids and user.id not in self.telegram.allowed_user_ids:
+    return False
+```
+
+Config:
+
+```yaml
+telegram:
+  allowedUserIds:
+    - 123456789
+  allowGroups: false
+```
+
+Behavior:
+
+- If `allowedUserIds` is set, only those users are accepted.
+- Group chats are rejected by default.
+- Unknown/unauthorized messages are ignored silently.
+
+## Gateway Session Key
+
+Telegram does not know about Pi session IDs. The gateway derives a stable key from Telegram identity:
+
+```text
+telegram:<chat_id>:<thread_id?>:<user_id?>
+```
+
+Examples:
+
+```text
+telegram:123456789:123456789              # private chat, includes user id
+telegram:-1001234567890:42                # group/forum thread if enabled
+```
+
+The session key is used to find or create a row in SQLite. See [Session Mapping and SQLite](05-session-mapping-and-sqlite.md).
+
+## Command Routing
+
+The Telegram adapter handles these gateway commands directly:
+
+```text
+/start
+/help
+/status
+/new
+/name <name>
+/compact [instructions]
+/stop
+/last
+/export
+/sessions
+/switch <id>
+/clone
+/models
+/model <provider/model-id>
+/thinking <level>
+/queue <text>
+/steer <text>
+/pi <text>
+```
+
+Normal non-command text is sent to Pi as a prompt.
+
+### Gateway Commands vs Pi Slash Commands
+
+Gateway commands are consumed before Pi sees them. To send a Pi slash command, use `/pi`:
+
+```text
+/pi /skill:some-skill do something
+/pi /compact summarize architecture decisions
+```
+
+## Message Flow
+
+```text
+Telegram text update
+  ↓
+_authorized(update)
+  ↓
+conversation_for(update)
+  ↓
+log inbound message to SQLite
+  ↓
+if slash command: _command(...)
+else: _send_to_pi(...)
+  ↓
+reply with assistant text
+```
+
+## Lifecycle Notifications
+
+On startup and graceful shutdown, `run_gateway()` calls:
+
+```python
+await telegram.notify_lifecycle("🟢 Pi gateway connected.")
+await telegram.notify_lifecycle("🔴 Pi gateway disconnected.")
+```
+
+`notify_lifecycle()` sends the message to every configured `allowedUserIds` entry. If no allowlist is configured, no lifecycle message is sent.
+
+Startup notifications include an update notice when PyPI has a newer `pi-gateway` version available. `/status` also includes the installed version and cached update-check result. The check is implemented in `pi_gateway.version_check` so other gateway integrations can reuse it.
+
+This is useful because the Telegram user can see when the agent becomes unavailable.
+
+## Response Chunking
+
+Telegram has message length limits. `chunks()` splits long messages before sending them.
+
+Current behavior:
+
+- The gateway sends a temporary `⏳ Pi is working...` message.
+- In private chats with `sendMessageDraft` support (python-telegram-bot 22.7+), it coalesces Pi text deltas into drafts at most every 0.8 seconds, using a nonzero per-reply draft ID. The first successful draft removes the working message. The preview shows sanitized tool names during `tool_execution_start`/`tool_execution_end` (no arguments, output, or thinking text); concurrent tools show the most recently started active tool. The tool indicator disappears on completion, and retries clear it. Only the first 4,096 characters are previewed, with space reserved for the tool indicator; the preview is ephemeral (about 30 seconds) and may be replaced by retries. Errors disable drafts for that reply without interrupting Pi.
+- Group chats, older SDKs, and replies without text deltas use the original working message. When Pi settles (or fails), the working message is removed if still present.
+- After `agent_settled`, the complete, authoritative answer is sent in persistent chunks. Drafts are never treated as final, and thinking deltas are never forwarded. `/status` reports `Pi generating now` separately from `Telegram draft preview` availability. Availability means the chat is private and the SDK implements the draft method; Telegram can still reject an individual draft, in which case the normal final reply is sent.
+
+## Important Code Locations
+
+| Function/Class | Purpose |
+|----------------|---------|
+| `TelegramGateway` | Main Telegram adapter |
+| `_authorized()` | User/group allowlist checks |
+| `_session_key_parts()` | Builds the Telegram session key |
+| `_command()` | Slash command router |
+| `_message()` | Normal text handler |
+| `_send_to_pi()` | Sends text to Pi and replies with result |
+| `notify_lifecycle()` | Startup/shutdown Telegram notifications |
+
+## Related Documents
+
+- [Session Mapping and SQLite](05-session-mapping-and-sqlite.md)
+- [Pi RPC Integration](04-pi-rpc-integration.md)
+- [Configuration and Deployment](06-configuration-and-deployment.md)
