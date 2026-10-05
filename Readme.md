@@ -129,9 +129,8 @@ Uploads the document using Google Drive tooling.
 
 ## Open Innovation
 
-This project combines an **open-weight AI model** with **open-source agent tooling** to build a practical personal assistant.
+This project combines an **open-weight AI model** with **open-source agent tooling** to build a practical personal assistant. Gemma provides the intelligence layer, while Pi, pi-gateway, and Google Workspace CLI provide the agent orchestration and tool-execution layers.
 
-Gemma provides the intelligence layer, while Pi, pi-gateway, and Google Workspace CLI provide the agent orchestration and tool-execution layers.
 ---
 
 ## Repository Structure
