@@ -1,0 +1,7 @@
+.env
+.pi-gateway/
+client_secret.json
+*.sqlite3
+uploads/
+__pycache__/
+*.pyc
