@@ -4,8 +4,6 @@ A lightweight, always-on personal AI assistant powered by **Google Gemma**, acce
 
 The assistant is accessible directly through **Telegram** and can interact with **Gmail, Google Calendar, and Google Drive** using natural-language instructions.
 
-Built for the **Hacktoberfest Weekend Challenge 2026 – Build for a Friend**.
-
 ---
 
 ## What I Built
